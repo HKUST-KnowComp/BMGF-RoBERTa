@@ -1,0 +1,7 @@
+tqdm
+numpy
+pandas
+scipy
+transformers
+stanfordnlp
+torch
