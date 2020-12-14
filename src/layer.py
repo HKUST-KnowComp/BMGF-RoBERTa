@@ -2,11 +2,12 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import numpy as np
-from utils import map_activation_str_to_layer
+from util import map_activation_str_to_layer
 from torch.nn import Dropout
 
-INF = 1e12
-_INF = -1e12
+INF = 1e30
+_INF = -1e30
+EPS = 1e-8
 
 class MLP(nn.Module):
     def __init__(self, input_dim, hidden_dim, output_dim, num_mlp_layers=2, activation=None):
@@ -101,7 +102,7 @@ def multi_perspective_match(vector1, vector2, weight):
     return similarity_single, similarity_multi
 
 
-def multi_perspective_match_pairwise(vector1, vector2, weight, eps=1e-8):
+def multi_perspective_match_pairwise(vector1, vector2, weight):
     num_perspectives = weight.size(0)
 
     # (1, num_perspectives, 1, hidden_size)
@@ -120,20 +121,20 @@ def multi_perspective_match_pairwise(vector1, vector2, weight, eps=1e-8):
     norm_value = vector1_norm * vector2_norm.transpose(2, 3)
 
     # (batch, seq_len1, seq_len2, num_perspectives)
-    return (mul_result / norm_value.clamp(min=eps)).permute(0, 2, 3, 1)
+    return (mul_result / norm_value.clamp(min=EPS)).permute(0, 2, 3, 1)
 
 
-def masked_max(vector, mask, dim, keepdim=False, min_val=-1e7):
-    replaced_vector = vector.masked_fill(mask==0, min_val) if mask is not None else vector
+def masked_max(vector, mask, dim, keepdim=False):
+    replaced_vector = vector.masked_fill(mask==0, _INF) if mask is not None else vector
     max_value, _ = replaced_vector.max(dim=dim, keepdim=keepdim)
     return max_value
 
 
-def masked_mean(vector, mask, dim, keepdim=False, eps=1e-8):
+def masked_mean(vector, mask, dim, keepdim=False):
     replaced_vector = vector.masked_fill(mask==0, 0.0) if mask is not None else vector
     value_sum = torch.sum(replaced_vector, dim=dim, keepdim=keepdim)
     value_count = torch.sum(mask.float(), dim=dim, keepdim=keepdim)
-    return value_sum / value_count.clamp(min=eps)
+    return value_sum / value_count.clamp(min=EPS)
 
 
 def masked_softmax(vector, mask, dim=-1):

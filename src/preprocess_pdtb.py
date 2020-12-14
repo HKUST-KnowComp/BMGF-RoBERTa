@@ -8,7 +8,7 @@ except:
 from functools import partial
 from tokenizer import *
 from dataset import Dataset
-from utils import str2list
+from util import str2list
 
 
 if __name__ == "__main__":
@@ -65,7 +65,7 @@ if __name__ == "__main__":
     # Dataset
     pdtb_dataset = Dataset(data=None, encode_func=encode_func)
     pdtb_dataset.load_csv(args.csv_file_path, args.processed_dir, args.sections, args.types)
-    pdtb_dataset.save_pickle(args.dataset_file_path)
+    pdtb_dataset.save_pt(args.dataset_file_path)
 
     
         

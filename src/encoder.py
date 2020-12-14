@@ -4,9 +4,10 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import copy
+import math
 from collections import OrderedDict
 from transformers import BertModel, RobertaModel
-from layers import *
+from layer import *
 
 class Encoder(nn.Module):
     def __init__(self, **kw):
@@ -117,9 +118,29 @@ class LSTMEncoder(Encoder):
 class BERTEncoder(Encoder):
     def __init__(self, **kw):
         super(BERTEncoder, self).__init__(**kw)
-        bert_dir = kw.get("bert_dir", "../data/model/bert")
+        bert_dir = kw.get("bert_dir", "/Users/sean/Workspace/Data/pretrained_lm/bert")
 
         self.model = BertModel.from_pretrained("bert-base-uncased", cache_dir=bert_dir)
+        embedding_dim = self.model.embeddings.word_embeddings.embedding_dim
+        num_position_embeddings = self.model.embeddings.position_embeddings.num_embeddings
+        num_segments = kw.get("num_segments", 2)
+        max_len = kw.get("max_len", 512)
+
+        with torch.no_grad():
+            # position embeddings
+            r = math.ceil(max_len/num_position_embeddings)
+            new_position_embeddings = nn.Embedding(r*num_position_embeddings, embedding_dim)
+            new_position_embeddings.weight.data.copy_(self.model.embeddings.position_embeddings.weight.repeat(r, 1))
+            del self.model.embeddings.position_embeddings
+            self.model.embeddings.position_embeddings = new_position_embeddings
+
+            # segment embeddings
+            r = math.ceil(num_segments/self.model.embeddings.token_type_embeddings.num_embeddings)
+            new_token_type_embeddings = nn.Embedding(r*self.model.embeddings.token_type_embeddings.num_embeddings, 768)
+            new_token_type_embeddings.weight.data.copy_(self.model.embeddings.token_type_embeddings.weight.repeat(r, 1))
+            del self.model.embeddings.token_type_embeddings
+            self.model.embeddings.token_type_embeddings = new_token_type_embeddings
+
         self.set_finetune("full")
         
     def set_finetune(self, finetune):
@@ -171,12 +192,28 @@ class BERTEncoder(Encoder):
 class ROBERTAEncoder(Encoder):
     def __init__(self, **kw):
         super(ROBERTAEncoder, self).__init__(**kw)
-        roberta_dir = kw.get("roberta_dir", "../data/model/roberta")
+        roberta_dir = kw.get("roberta_dir", "/Users/sean/Workspace/Data/pretrained_lm/roberta")
 
         self.model = RobertaModel.from_pretrained("roberta-base", cache_dir=roberta_dir)
-        del self.model.embeddings.token_type_embeddings
-        self.model.embeddings.token_type_embeddings = nn.Embedding(2, 768)
-        nn.init.constant_(self.model.embeddings.token_type_embeddings.weight, 0)
+        embedding_dim = self.model.embeddings.word_embeddings.embedding_dim
+        num_position_embeddings = self.model.embeddings.position_embeddings.num_embeddings
+        num_segments = kw.get("num_segments", 2)
+        max_len = kw.get("max_len", 512)
+
+        with torch.no_grad():
+            # position embeddings
+            r = math.ceil(max_len/num_position_embeddings)
+            new_position_embeddings = nn.Embedding(r*num_position_embeddings, embedding_dim)
+            new_position_embeddings.weight.data.copy_(self.model.embeddings.position_embeddings.weight.repeat(r, 1))
+            del self.model.embeddings.position_embeddings
+            self.model.embeddings.position_embeddings = new_position_embeddings
+
+            # segment embeddings
+            r = math.ceil(num_segments/self.model.embeddings.token_type_embeddings.num_embeddings)
+            new_token_type_embeddings = nn.Embedding(r*self.model.embeddings.token_type_embeddings.num_embeddings, 768)
+            new_token_type_embeddings.weight.data.copy_(self.model.embeddings.token_type_embeddings.weight.repeat(r, 1))
+            del self.model.embeddings.token_type_embeddings
+            self.model.embeddings.token_type_embeddings = new_token_type_embeddings
         self.set_finetune("full")
 
     def set_finetune(self, finetune):

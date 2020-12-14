@@ -8,7 +8,6 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from collections import namedtuple
-from stanfordnlp.server import CoreNLPClient
 
 ##############################
 ##### argument functions #####
@@ -44,6 +43,8 @@ def is_port_occupied(ip='127.0.0.1', port=80):
         return False
 
 def get_corenlp_client(corenlp_path, corenlp_port):
+    from stanfordnlp.server import CoreNLPClient
+    
     annotators = ["tokenize", "ssplit"]
 
     os.environ["CORENLP_HOME"] = corenlp_path
@@ -231,13 +232,18 @@ def batch_convert_len_to_mask(batch_lens, max_seq_len=-1):
         mask[i, l:].fill_(0)
     return mask
 
-_act_map = {"none": lambda x: x,
+class _GELU(nn.Module):
+    def forward(self, x):
+        return 0.5 * x * (1 + torch.tanh(math.sqrt(2 / math.pi) * (x + 0.044715 * torch.pow(x, 3))))
+
+_act_map = {"none": None,
             "relu": nn.ReLU(),
             "tanh": nn.Tanh(),
             "softmax": nn.Softmax(dim=-1),
             "sigmoid": nn.Sigmoid(),
-            "leaky_relu": nn.LeakyReLU(),
-            "prelu": nn.PReLU()}
+            "leaky_relu": nn.LeakyReLU(1/5.5),
+            "prelu": nn.PReLU(),
+            "gelu": nn.GELU() if torch.__version__ >= "1.4.0" else _GELU()}
 
 def map_activation_str_to_layer(act_str):
     try:

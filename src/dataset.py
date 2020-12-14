@@ -1,4 +1,3 @@
-import pickle
 import numpy as np
 import pandas as pd
 import torch
@@ -9,7 +8,7 @@ from collections import defaultdict
 from copy import copy
 from itertools import chain
 from tqdm import tqdm
-from utils import *
+from util import *
 
 class WordMapper:
     def __init__(self, **kw):
@@ -35,46 +34,62 @@ class WordMapper:
 
 
 class Dataset(data.Dataset):
-    rel_map_14 = defaultdict(lambda: -1, 
-        {"Temporal.Asynchronous.Precedence": 0, # "Precedence"
-        "Temporal.Asynchronous.Succession": 1, # "Succession"
-        "Temporal.Synchrony": 2, # "Synchrony"
-        "Contingency.Cause.Reason": 3, # "Reason"
-        "Contingency.Cause.Result": 4, # "Result"
-        "Contingency.Condition.Hypothetical": 5, # "Condition"
-        "Comparison.Contrast": 6, # "Contrast"
-        "Comparison.Contrast.Juxtaposition": 6, # "Contrast"
-        "Comparison.Contrast.Opposition": 6, # "Contrast"
-        "Comparison.Concession": 7, # "Concession"
-        "Comparison.Concession.Contra-expectation": 7, # "Concession"
-        "Comparison.Concession.Expectation": 7, # "Concession"
-        "Expansion.Conjunction": 8, # "Conjunction"
-        "Expansion.Instantiation": 9, # "Instantiation"
-        "Expansion.Restatement": 10, # "Restatement"
-        "Expansion.Restatement.Equivalence": 10, # "Restatement"
-        "Expansion.Restatement.Generalization": 10, # "Restatement"
-        "Expansion.Restatement.Specification": 10, # "Restatement"
-        "Expansion.Alternative": 11, # "Alternative"
-        "Expansion.Alternative.Conjunctive": 11, # "Alternative"
-        "Expansion.Alternative.Chosen alternative": 12, # ChosenAlternative
-        "Expansion.Exception": 13}) # "Exception"
-
-    rel_map_12 = defaultdict(lambda: -1, 
-        {"Comparison.Concession": 0,
+    rel_map_14 = defaultdict(lambda: -1, {
+        # "Comparison"
+        "Comparison.Concession": 0,
+        "Comparison.Concession.Contra-expectation": 0,
+        "Comparison.Concession.Expectation": 0,
+        "Comparison.Pragmatic concession": 0,
         "Comparison.Contrast": 1,
-        "Contingency.Cause.Reason": 2,
-        "Contingency.Cause.Result": 3,
-        "Expansion": 4,
-        "Expansion.Alternative.Chosen alternative": 5,
-        "Expansion.Conjunction": 6,
-        "Expansion.Instantiation": 7,
-        "Expansion.Restatement": 8,
-        "Temporal.Asynchronous.Precedence": 9,
-        "Temporal.Asynchronous.Succession": 10,
-        "Temporal.Synchrony": 11})
+        "Comparison.Contrast.Juxtaposition": 1,
+        "Comparison.Contrast.Opposition": 1,
+        "Comparison.Pragmatic contrast": 1,
 
-    rel_map_11 = defaultdict(lambda: -1, 
-        {# "Comparison",
+        # "Contingency"
+        "Contingency.Cause.Reason": 2,
+        "Contingency.Pragmatic cause.Justification": 2,
+        "Contingency.Cause.Result": 3,
+        "Contingency.Condition": 4,
+        "Contingency.Condition.Hypothetical": 4,
+        "Contingency.Pragmatic condition.Relevance": 4,
+        # "Contingency.Cause",
+
+        # "Expansion"
+        "Expansion.Alternative": 5,
+        "Expansion.Alternative.Conjunctive": 5,
+        "Expansion.Alternative.Disjunctive": 5,
+        "Expansion.Alternative.Chosen alternative": 6,
+        "Expansion.Conjunction": 7,
+        "Expansion.List": 7,
+        "Expansion.Exception": 8,
+        "Expansion.Instantiation": 9,
+        "Expansion.Restatement": 10,
+        "Expansion.Restatement.Equivalence": 10,
+        "Expansion.Restatement.Generalization": 10,
+        "Expansion.Restatement.Specification": 10,
+
+        # "Temporal",
+        "Temporal.Asynchronous.Precedence": 11,
+        "Temporal.Asynchronous.Succession": 12,
+        "Temporal.Synchrony": 13})
+    # Counter({
+    #     "Comparison.Concession": 206,
+    #     "Comparison.Contrast": 1872,
+    #     "Contingency.Cause.Reason": 2287,
+    #     "Contingency.Cause.Result": 1530,
+    #     "Contingency.Condition": 2,
+    #     "Expansion.Alternative": 12,
+    #     "Expansion.Alternative.Chosen alternative": 159,
+    #     "Expansion.Conjunction": 3577,
+    #     "Expansion.Exception": 1,
+    #     "Expansion.Instantiation": 1251,
+    #     "Expansion.Restatement": 2807,
+    #     "Temporal.Asynchronous.Precedence": 467,
+    #     "Temporal.Asynchronous.Succession": 133,
+    #     "Temporal.Synchrony": 236})
+
+    rel_map_11 = defaultdict(lambda: -1, {
+        # "Comparison",
         "Comparison.Concession": 0,
         "Comparison.Concession.Contra-expectation": 0,
         "Comparison.Concession.Expectation": 0,
@@ -83,48 +98,49 @@ class Dataset(data.Dataset):
         "Comparison.Contrast.Opposition": 1,
         # "Comparison.Pragmatic concession",
         # "Comparison.Pragmatic contrast",
+
         # "Contingency",
         "Contingency.Cause": 2,
         "Contingency.Cause.Reason": 2,
         "Contingency.Cause.Result": 2,
-        # "Contingency.Condition.Hypothetical",
         "Contingency.Pragmatic cause.Justification": 3,
+        # "Contingency.Condition",
+        # "Contingency.Condition.Hypothetical",
         # "Contingency.Pragmatic condition.Relevance",
+
         # "Expansion",
         "Expansion.Alternative": 4,
         "Expansion.Alternative.Chosen alternative": 4,
         "Expansion.Alternative.Conjunctive": 4,
         "Expansion.Conjunction": 5,
-        # "Expansion.Exception",
         "Expansion.Instantiation": 6,
         "Expansion.List": 7,
         "Expansion.Restatement": 8,
         "Expansion.Restatement.Equivalence": 8,
         "Expansion.Restatement.Generalization": 8,
         "Expansion.Restatement.Specification": 8,
+        # "Expansion.Alternative.Disjunctive",
+        # "Expansion.Exception",
+
         # "Temporal",
         "Temporal.Asynchronous.Precedence": 9,
         "Temporal.Asynchronous.Succession": 9,
         "Temporal.Synchrony": 10})
-    # Counter({'Comparison.Concession': 216,
-    #      'Comparison.Contrast': 1915,
-    #      'Comparison.Pragmatic concession': 1,
-    #      'Comparison.Pragmatic contrast': 4,
-    #      'Contingency.Cause': 3833,
-    #      'Contingency.Condition': 1,
-    #      'Contingency.Pragmatic cause': 78,
-    #      'Contingency.Pragmatic condition': 1,
-    #      'Expansion.Alternative': 171,
-    #      'Expansion.Conjunction': 3355,
-    #      'Expansion.Exception': 2,
-    #      'Expansion.Instantiation': 1332,
-    #      'Expansion.List': 360,
-    #      'Expansion.Restatement': 2945,
-    #      'Temporal.Asynchronous': 662,
-    #      'Temporal.Synchrony': 245})
+    # Counter({
+    #      "Comparison.Concession": 216,
+    #      "Comparison.Contrast": 1915,
+    #      "Contingency.Cause": 3833,
+    #      "Contingency.Pragmatic cause": 78,
+    #      "Expansion.Alternative": 171,
+    #      "Expansion.Conjunction": 3355,
+    #      "Expansion.Instantiation": 1332,
+    #      "Expansion.List": 360,
+    #      "Expansion.Restatement": 2945,
+    #      "Temporal.Asynchronous": 662,
+    #      "Temporal.Synchrony": 245})
 
-    rel_map_4 = defaultdict(lambda: -1, 
-        {"Comparison": 0,
+    rel_map_4 = defaultdict(lambda: -1, {
+        "Comparison": 0,
         "Comparison.Concession": 0,
         "Comparison.Concession.Contra-expectation": 0,
         "Comparison.Concession.Expectation": 0,
@@ -133,17 +149,21 @@ class Dataset(data.Dataset):
         "Comparison.Contrast.Opposition": 0,
         "Comparison.Pragmatic concession": 0,
         "Comparison.Pragmatic contrast": 0,
+
         "Contingency": 1,
         "Contingency.Cause": 1,
         "Contingency.Cause.Reason": 1,
         "Contingency.Cause.Result": 1,
+        "Contingency.Condition": 1,
         "Contingency.Condition.Hypothetical": 1,
         "Contingency.Pragmatic cause.Justification": 1,
         "Contingency.Pragmatic condition.Relevance": 1,
+
         "Expansion": 2,
         "Expansion.Alternative": 2,
         "Expansion.Alternative.Chosen alternative": 2,
         "Expansion.Alternative.Conjunctive": 2,
+        "Expansion.Alternative.Disjunctive": 2,
         "Expansion.Conjunction": 2,
         "Expansion.Exception": 2,
         "Expansion.Instantiation": 2,
@@ -152,14 +172,16 @@ class Dataset(data.Dataset):
         "Expansion.Restatement.Equivalence": 2,
         "Expansion.Restatement.Generalization": 2,
         "Expansion.Restatement.Specification": 2,
+
         "Temporal": 3,
         "Temporal.Asynchronous.Precedence": 3,
         "Temporal.Asynchronous.Succession": 3,
         "Temporal.Synchrony": 3})
-    # Counter({'Comparison': 2293,
-    #      'Contingency': 3917,
-    #      'Expansion': 8256,
-    #      'Temporal': 909})
+    # Counter({
+    #     "Comparison": 2293,
+    #     "Contingency": 3917,
+    #     "Expansion": 8256,
+    #     "Temporal": 909})
 
     def __init__(self, data=None, encode_func=None):
         super(Dataset, self).__init__()
@@ -291,15 +313,12 @@ class Dataset(data.Dataset):
                 "arg2": self.encode_func(row[1]["RawText"])}
             self.data.append(x)
 
-    def load_pickle(self, pkl_file_path):
-        with open(pkl_file_path, "rb") as f:
-            data = pickle.load(f)
-            self.data = data
-            return self
+    def load_pt(self, pt_file_path):
+        self.data = torch.load(pt_file_path)
+        return self
 
-    def save_pickle(self, pkl_file_path):
-        with open(pkl_file_path, "wb") as f:
-            pickle.dump(self.data, f, protocol=pickle.HIGHEST_PROTOCOL)
+    def save_pt(self, pt_file_path):
+        torch.save(self.data, pt_file_path, _use_new_zipfile_serialization=False)
 
 
 class Sampler(data.Sampler):

@@ -25,10 +25,17 @@ def evaluate_accuracy(pred, target, prefered_target=None):
                 j = target[i].argmax()
             target_refined[i, j] = 1
 
-    result = {"overall": correct/num_examples}
+    # delete empty labels, map those predictions to a dummy label
+    cnt = target_refined.sum(axis=0)
+    real_labels = cnt > 0
+    result = {}
     for c in range(num_classes):
-        result[c] = accuracy_score(target_refined[:, c], pred_refined[:, c])
+        if real_labels[c]:
+            result[c] = accuracy_score(target_refined[:, c], pred_refined[:, c])
+        else:
+            result[c] = 1.0
     
+    result["overall"] = correct/num_examples
     return result
 
 def evaluate_precision_recall_f1(pred, target, prefered_target=None, average="macro"):
@@ -55,10 +62,20 @@ def evaluate_precision_recall_f1(pred, target, prefered_target=None, average="ma
                 else:
                     j = target[i].argmax()
                 target_refined[i, j] = 1
-
-        result = {"overall": tuple(precision_recall_fscore_support(target_refined, pred_refined, average=average)[0:3])}
-        for c in range(num_classes):
+    # delete empty labels, map those predictions to a dummy label
+    cnt = target_refined.sum(axis=0)
+    real_labels = cnt > 0
+    result = {}
+    for c in range(num_classes):
+        if real_labels[c]:
             result[c] = tuple(precision_recall_fscore_support(target_refined[:, c], pred_refined[:, c], average="binary")[0:3])
-    
+        else:
+            result[c] = (0.0, 0.0, 0.0)
+    if pred_refined[:, cnt <= 0].sum() == 0:
+        result["overall"] = tuple(precision_recall_fscore_support(target_refined[:, real_labels], pred_refined[:, real_labels], average=average)[0:3])
+    else:
+        result["overall"] = tuple(precision_recall_fscore_support(
+            np.concatenate([target_refined[:, real_labels], np.zeros((num_examples, 1), dtype=target_refined.dtype)], axis=1),
+            np.concatenate([pred_refined[:, real_labels], pred_refined[:, cnt <= 0].sum(axis=1).reshape(num_examples, 1)], axis=1),
+            average=average)[0:3])
     return result
-    

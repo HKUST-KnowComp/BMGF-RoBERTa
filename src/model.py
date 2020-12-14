@@ -5,19 +5,18 @@ import copy
 import numpy as np
 from collections import OrderedDict
 from encoder import *
-from layers import *
+from layer import *
 
 class BMGFModel(nn.Module):
     def __init__(self, **kw):
         super(BMGFModel, self).__init__()
-        min_arg = kw.get("min_arg", 3)
+        max_arg = kw.get("max_arg", 512)
         encoder = kw.get("encoder", "roberta")
         hidden_dim = kw.get("hidden_dim", 128)
         num_perspectives = kw.get("num_perspectives", 16)
         dropout = kw.get("dropout", 0.2)
         activation = kw.get("activation", "relu")
         num_rels = kw.get("num_rels", 4)
-        filters = kw.get("filters", [[1, 4], [2, 8], [3, 16], [4, 32], [5, 64]])
         num_filters = kw.get("num_filters", 64)
         act_layer = map_activation_str_to_layer(activation)
 
@@ -25,9 +24,9 @@ class BMGFModel(nn.Module):
         if encoder == "lstm":
             self.encoder = LSTMEncoder(**kw)
         elif encoder == "bert":
-            self.encoder = BERTEncoder(**kw)
+            self.encoder = BERTEncoder(num_segments=2, max_len=max_arg*2, **kw)
         elif encoder == "roberta":
-            self.encoder = ROBERTAEncoder(**kw)
+            self.encoder = ROBERTAEncoder(num_segments=2, max_len=max_arg*2, **kw)
         else:
             raise NotImplementedError("Error: encoder=%s is not supported now." % (encoder))
 

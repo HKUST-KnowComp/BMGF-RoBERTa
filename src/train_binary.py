@@ -20,10 +20,10 @@ except BaseException as e:
 from model import BMGFModel
 from dataset import Dataset, Sampler
 from evaluate import evaluate_accuracy, evaluate_precision_recall_f1
-from utils import *
+from util import *
 
-INF = np.float("INF")
-_INF = np.float("-INF")
+INF = 1e30
+_INF = -1e30
 
 def eval_epoch(args, logger, writer, model, data_type, data_loader, device, epoch):
     model.eval()
@@ -266,13 +266,13 @@ def train(args, logger, writer):
         logger.info("retrieve the best epochs for BMGFModel: %s" % (best_epochs))
         if len(best_epochs) > 0:
             model = BMGFModel(**(config._asdict()))
-            if "test" in best_epochs:
-                model.load_state_dict(torch.load(
-                    os.path.join(args.pretrained_model_path, "epoch%d.pt" % (best_epochs["test"])),
-                    map_location=device))
-            elif "valid" in best_epochs:
+            if "valid" in best_epochs:
                 model.load_state_dict(torch.load(
                     os.path.join(args.pretrained_model_path, "epoch%d.pt" % (best_epochs["valid"])),
+                    map_location=device))
+            elif "test" in best_epochs:
+                model.load_state_dict(torch.load(
+                    os.path.join(args.pretrained_model_path, "epoch%d.pt" % (best_epochs["test"])),
                     map_location=device))
             else:
                 model.load_state_dict(torch.load(
@@ -295,12 +295,12 @@ def train(args, logger, writer):
 
     # load data
     datasets = OrderedDict({
-        "train": Dataset().load_pickle(args.train_dataset_path), 
-        "valid": Dataset().load_pickle(args.valid_dataset_path), 
-        "test": Dataset().load_pickle(args.test_dataset_path)})
+        "train": Dataset().load_pt(args.train_dataset_path), 
+        "valid": Dataset().load_pt(args.valid_dataset_path), 
+        "test": Dataset().load_pt(args.test_dataset_path)})
 
     if args.explicit_dataset_path != "":
-        explicit_dataset = Dataset().load_pickle(args.explicit_dataset_path)
+        explicit_dataset = Dataset().load_pt(args.explicit_dataset_path)
         datasets["train"].data.extend(explicit_dataset.data)
         del explicit_dataset
     logger.info("train:valid:test = %d:%d:%d" % (len(datasets["train"]), len(datasets["valid"]), len(datasets["test"])))
@@ -344,12 +344,6 @@ def train(args, logger, writer):
             if data_type == "train":
                 mean_loss, results = train_epoch(args, logger, writer,
                     model, optimizer, data_type, data_loader, device, epoch)
-                if args.gpu_ids and len(args.gpu_ids) > 1:
-                    torch.save(model.module.state_dict(), 
-                        os.path.join(args.save_model_dir, "epoch%d.pt" % (epoch)))
-                else:
-                    torch.save(model.state_dict(), 
-                        os.path.join(args.save_model_dir, "epoch%d.pt" % (epoch)))
             else:
                 mean_loss, results = eval_epoch(args, logger, writer,
                     model, data_type, data_loader, device, epoch)
@@ -360,21 +354,57 @@ def train(args, logger, writer):
                 best_loss_epochs[data_type] = epoch
                 logger.info("data_type: {:<5s}\tbest pdtb-loss: {:.4f} (epoch: {:0>3d})".format(
                     data_type, best_losses[data_type], best_loss_epochs[data_type]))
+                if args.save_best == "loss":
+                    if args.gpu_ids and len(args.gpu_ids) > 1:
+                        torch.save(model.module.state_dict(), 
+                            os.path.join(args.save_model_dir, "%s_best.pt" % (data_type)),
+                            _use_new_zipfile_serialization=False)
+                    else:
+                        torch.save(model.state_dict(), 
+                            os.path.join(args.save_model_dir, "%s_best.pt" % (data_type)),
+                            _use_new_zipfile_serialization=False)
             if results["evaluation"]["accuracy"]["overall"] >= best_accs[data_type]:
                 best_accs[data_type] = results["evaluation"]["accuracy"]["overall"] 
                 best_acc_epochs[data_type] = epoch
                 logger.info("data_type: {:<5s}\tbest pdtb-accuracy: {:.4f} (epoch: {:0>3d})".format(
                     data_type, best_accs[data_type], best_acc_epochs[data_type]))
+                if args.save_best == "acc":
+                    if args.gpu_ids and len(args.gpu_ids) > 1:
+                        torch.save(model.module.state_dict(), 
+                            os.path.join(args.save_model_dir, "%s_best.pt" % (data_type)),
+                            _use_new_zipfile_serialization=False)
+                    else:
+                        torch.save(model.state_dict(), 
+                            os.path.join(args.save_model_dir, "%s_best.pt" % (data_type)),
+                            _use_new_zipfile_serialization=False)
             if results["evaluation"]["precision_recall_f1"]["overall"][-1] >= best_f1s[data_type]:
                 best_f1s[data_type] = results["evaluation"]["precision_recall_f1"]["overall"][-1]
                 best_f1_epochs[data_type] = epoch
                 logger.info("data_type: {:<5s}\tbest pdtb-f1: {:.4f} (epoch: {:0>3d})".format(
                     data_type, best_f1s[data_type], best_f1_epochs[data_type]))
+                if args.save_best == "f1":
+                    if args.gpu_ids and len(args.gpu_ids) > 1:
+                        torch.save(model.module.state_dict(), 
+                            os.path.join(args.save_model_dir, "%s_best.pt" % (data_type)),
+                            _use_new_zipfile_serialization=False)
+                    else:
+                        torch.save(model.state_dict(), 
+                            os.path.join(args.save_model_dir, "%s_best.pt" % (data_type)),
+                            _use_new_zipfile_serialization=False)
             if results["evaluation"]["accuracy"]["overall"]+results["evaluation"]["precision_recall_f1"]["overall"][-1] >= best_accf1s[data_type]:
                 best_accf1s[data_type] = results["evaluation"]["accuracy"]["overall"]+results["evaluation"]["precision_recall_f1"]["overall"][-1]
                 best_accf1_epochs[data_type] = epoch
                 logger.info("data_type: {:<5s}\tbest pdtb-accf1: {:.4f} (epoch: {:0>3d})".format(
                     data_type, best_accf1s[data_type], best_accf1_epochs[data_type]))
+                if args.save_best == "accf1":
+                    if args.gpu_ids and len(args.gpu_ids) > 1:
+                        torch.save(model.module.state_dict(), 
+                            os.path.join(args.save_model_dir, "%s_best.pt" % (data_type)),
+                            _use_new_zipfile_serialization=False)
+                    else:
+                        torch.save(model.state_dict(), 
+                            os.path.join(args.save_model_dir, "%s_best.pt" % (data_type)),
+                            _use_new_zipfile_serialization=False)
     for data_type in data_loaders:
         logger.info("data_type: {:<5s}\tbest pdtb-loss: {:.4f} (epoch: {:0>3d})".format(
             data_type, best_losses[data_type], best_loss_epochs[data_type]))
@@ -428,6 +458,9 @@ if __name__ == "__main__":
                         help="weight decay")
     parser.add_argument("--max_grad_norm", type=float, default=2.0,
                         help="max grad norm for gradient clipping")
+    parser.add_argument("--save_best", type=str, default="f1",
+                        choices=["loss", "acc", "f1", "accf1"],
+                        help="the criteria to save best models")
     parser.add_argument("--loss", type=str, default="ce",
                         choices=["ce", "mlce"],
                         help="loss function")
@@ -448,7 +481,7 @@ if __name__ == "__main__":
     parser.add_argument("--num_filters", type=int, default=64,
                         help="number of filters for convolutional layers")
     parser.add_argument("--activation", type=str, default="leaky_relu", 
-                        choices=["relu", "tanh", "softmax", "sigmoid", "leaky_relu", "prelu"],
+                        choices=["relu", "tanh", "softmax", "sigmoid", "leaky_relu", "prelu", "gelu"],
                         help="activation function type")
     parser.add_argument("--dropout", type=float, default=0.2,
                         help="dropout for neural networks")

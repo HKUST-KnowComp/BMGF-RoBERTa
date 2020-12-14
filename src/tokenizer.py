@@ -4,7 +4,7 @@ import torch.nn as nn
 import re
 from itertools import chain
 from transformers import BertTokenizer, RobertaTokenizer
-from utils import *
+from util import *
 
 class Tokenizer:
     def __init__(self, **kw):
@@ -116,7 +116,7 @@ class BERTTokenizer(Tokenizer):
         super(BERTTokenizer, self).__init__(**kw)
         corenlp_path = kw.get("corenlp_path", "")
         corenlp_port = kw.get("corenlp_port", 0)
-        bert_dir = kw.get("bert_dir", "../data/model/bert")
+        bert_dir = kw.get("bert_dir", "/Users/sean/Workspace/Data/pretrained_lm/bert")
 
         self.corenlp_client = get_corenlp_client(corenlp_path=corenlp_path, corenlp_port=corenlp_port)
         self.tokenizer = BertTokenizer.from_pretrained("bert-base-uncased", cache_dir=bert_dir)
@@ -187,7 +187,7 @@ class ROBERTATokenizer(Tokenizer):
         super(ROBERTATokenizer, self).__init__(**kw)
         corenlp_path = kw.get("corenlp_path", "")
         corenlp_port = kw.get("corenlp_port", 0)
-        roberta_dir = kw.get("roberta_dir", "../data/model/roberta")
+        roberta_dir = kw.get("roberta_dir", "/Users/sean/Workspace/Data/pretrained_lm/roberta")
 
         self.corenlp_client = get_corenlp_client(corenlp_path=corenlp_path, corenlp_port=corenlp_port)
         self.tokenizer = RobertaTokenizer.from_pretrained("roberta-base", cache_dir=roberta_dir)
