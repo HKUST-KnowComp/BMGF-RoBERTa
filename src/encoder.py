@@ -118,7 +118,7 @@ class LSTMEncoder(Encoder):
 class BERTEncoder(Encoder):
     def __init__(self, **kw):
         super(BERTEncoder, self).__init__(**kw)
-        bert_dir = kw.get("bert_dir", "/Users/sean/Workspace/Data/pretrained_lm/bert")
+        bert_dir = kw.get("bert_dir", "../data/pretrained_lm/bert")
 
         self.model = BertModel.from_pretrained("bert-base-uncased", cache_dir=bert_dir)
         embedding_dim = self.model.embeddings.word_embeddings.embedding_dim
@@ -192,7 +192,7 @@ class BERTEncoder(Encoder):
 class ROBERTAEncoder(Encoder):
     def __init__(self, **kw):
         super(ROBERTAEncoder, self).__init__(**kw)
-        roberta_dir = kw.get("roberta_dir", "/Users/sean/Workspace/Data/pretrained_lm/roberta")
+        roberta_dir = kw.get("roberta_dir", "../data/pretrained_lm/roberta")
 
         self.model = RobertaModel.from_pretrained("roberta-base", cache_dir=roberta_dir)
         embedding_dim = self.model.embeddings.word_embeddings.embedding_dim
