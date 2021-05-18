@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import numpy as np
-from util import map_activation_str_to_layer
+from utils import map_activation_str_to_layer
 from torch.nn import Dropout
 
 INF = 1e30

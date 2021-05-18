@@ -263,13 +263,13 @@ def train(args, logger, writer):
         logger.info("retrieve the best epochs for BMGFModel: %s" % (best_epochs))
         if len(best_epochs) > 0:
             model = BMGFModel(**(config._asdict()))
-            if "valid" in best_epochs:
-                model.load_state_dict(torch.load(
-                    os.path.join(args.pretrained_model_path, "epoch%d.pt" % (best_epochs["valid"])),
-                    map_location=device))
-            elif "test" in best_epochs:
+            if "test" in best_epochs:
                 model.load_state_dict(torch.load(
                     os.path.join(args.pretrained_model_path, "epoch%d.pt" % (best_epochs["test"])),
+                    map_location=device))
+            elif "valid" in best_epochs:
+                model.load_state_dict(torch.load(
+                    os.path.join(args.pretrained_model_path, "epoch%d.pt" % (best_epochs["valid"])),
                     map_location=device))
             else:
                 model.load_state_dict(torch.load(
@@ -303,10 +303,14 @@ def train(args, logger, writer):
 
     if args.num_rels == 14:
         rel_map = Dataset.rel_map_14
+    elif args.num_rels == 12:
+        rel_map = Dataset.rel_map_12
     elif args.num_rels == 11:
         rel_map = Dataset.rel_map_11
     elif args.num_rels == 4:
         rel_map = Dataset.rel_map_4
+    elif args.num_rels == 3:
+        rel_map = Dataset.rel_map_3
     else:
         raise NotImplementedError("Error: num_rels=%d is not supported now." % (args.num_rels))
     if args.encoder == "roberta":
@@ -435,7 +439,7 @@ if __name__ == "__main__":
     parser.add_argument("--save_model_dir", type=str,
                         help="model dir to save models")
     parser.add_argument("--num_rels", type=int, default=4,
-                        choices=[4, 11, 14],
+                        choices=[3, 4, 11, 12, 14],
                         help="how many relations are computed")
     parser.add_argument("--min_arg", type=int, default=3,
                         help="the minimum length of arguments")
@@ -463,6 +467,7 @@ if __name__ == "__main__":
     parser.add_argument("--loss", type=str, default="ce",
                         choices=["ce", "mlce"],
                         help="loss function")
+    
     
     # BMGFModel config
     parser.add_argument("--encoder", type=str, default="roberta",

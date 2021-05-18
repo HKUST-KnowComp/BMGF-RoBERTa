@@ -149,6 +149,10 @@ You can check functions in *evaluate.py*.
 * For BMGF-RoBERTa w/o SE, set *--finetune none* instead of *--finetune type*
 * For BMGF-RoBERTa w/o GF/BM, delete these layers from *BMGFModel* in the *model.py* file
 
+### Checkpoint (remember to call `.set_finetune()` or `.eval()`)
+
+* CoNLL model ([onedrive](https://hkustconnect-my.sharepoint.com/:u:/g/personal/xliucr_connect_ust_hk/EY1RvhZCqaBFkzmcvqDfC3ABkRGjnsTahNTgu8O_jX1ajg?e=1fEbw0))
+
 ## Reference:
 The details of this architecture are described in the following paper. If you use this model in your work, please kindly cite it.
 

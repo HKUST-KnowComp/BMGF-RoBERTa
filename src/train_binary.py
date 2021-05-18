@@ -266,13 +266,13 @@ def train(args, logger, writer):
         logger.info("retrieve the best epochs for BMGFModel: %s" % (best_epochs))
         if len(best_epochs) > 0:
             model = BMGFModel(**(config._asdict()))
-            if "valid" in best_epochs:
-                model.load_state_dict(torch.load(
-                    os.path.join(args.pretrained_model_path, "epoch%d.pt" % (best_epochs["valid"])),
-                    map_location=device))
-            elif "test" in best_epochs:
+            if "test" in best_epochs:
                 model.load_state_dict(torch.load(
                     os.path.join(args.pretrained_model_path, "epoch%d.pt" % (best_epochs["test"])),
+                    map_location=device))
+            elif "valid" in best_epochs:
+                model.load_state_dict(torch.load(
+                    os.path.join(args.pretrained_model_path, "epoch%d.pt" % (best_epochs["valid"])),
                     map_location=device))
             else:
                 model.load_state_dict(torch.load(
