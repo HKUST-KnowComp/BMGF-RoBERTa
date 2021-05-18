@@ -4,8 +4,7 @@ import torch
 import torch.utils.data as data
 import re
 import math
-from collections import defaultdict
-from copy import copy
+from collections import defaultdict, OrderedDict
 from itertools import chain
 from tqdm import tqdm
 from util import *
@@ -322,51 +321,48 @@ class Dataset(data.Dataset):
 
 
 class Sampler(data.Sampler):
-    _type_map = {
-        int: np.int32,
-        float: np.float32}
 
-    def __init__(self, dataset, group_by, batch_size, shuffle, drop_last):
+    def __init__(self, dataset, group_by, batch_size, shuffle=False, drop_last=False):
         super(Sampler, self).__init__(dataset)
         if isinstance(group_by, str):
             group_by = [group_by]
+        self.group_by = group_by
+        self.cache = OrderedDict()
         for attr in group_by:
-            setattr(self, attr, list())
-        self.data_size = len(dataset.data)
-        for x in dataset.data:
-            for attr in group_by:
-                value = x[attr]
-                if hasattr(value, "__len__"):
-                    getattr(self, attr).append(len(value))
-                else:
-                    getattr(self, attr).append(value)
-        self.order = copy(group_by)
-        self.order.append("rand")
+            self.cache[attr] = np.array([x[attr] for x in dataset], dtype=np.float32)
+        self.data_size = len(dataset)
         self.batch_size = batch_size
         self.shuffle = shuffle
         self.drop_last = drop_last
 
     def make_array(self):
-        self.rand = np.random.rand(self.data_size).astype(np.float32)
-        if self.data_size == 0:
-            types = [np.float32] * len(self.order)
-        else:
-            types = [type(getattr(self, attr)[0]) for attr in self.order]
-            types = [Sampler._type_map.get(t, t) for t in types]
-        dtype = list(zip(self.order, types))
-        array = np.array(
-            list(zip(*[getattr(self, attr) for attr in self.order])),
-            dtype=dtype)
+        rand = np.random.rand(self.data_size).astype(np.float32)
+        array = np.stack(list(self.cache.values()) + [rand], axis=-1)
+        array = array.view(list(zip(list(self.cache.keys()) + ["rand"], [np.float32] * (len(self.cache) + 1)))).flatten()
+
         return array
+
+    def handle_singleton(self, batches):
+        if not self.drop_last and len(batches) > 1 and len(batches[-1]) < self.batch_size // 2:
+            merged_batch = np.concatenate([batches[-2], batches[-1]], axis=0)
+            batches.pop()
+            batches.pop()
+            batches.append(merged_batch[:len(merged_batch)//2])
+            batches.append(merged_batch[len(merged_batch)//2:])
+
+        return batches
 
     def __iter__(self):
         array = self.make_array()
-        indices = np.argsort(array, axis=0, order=self.order)
+        indices = np.argsort(array, axis=0, order=self.group_by)
         batches = [indices[i:i + self.batch_size] for i in range(0, len(indices), self.batch_size)]
+        batches = self.handle_singleton(batches)
+
         if self.shuffle:
             np.random.shuffle(batches)
+
         batch_idx = 0
-        while batch_idx < len(batches)-1:
+        while batch_idx < len(batches) - 1:
             yield batches[batch_idx]
             batch_idx += 1
         if len(batches) > 0 and (len(batches[batch_idx]) == self.batch_size or not self.drop_last):
@@ -374,6 +370,7 @@ class Sampler(data.Sampler):
 
     def __len__(self):
         if self.drop_last:
-            return math.floor(self.data_size/self.batch_size)
+            return math.floor(self.data_size / self.batch_size)
         else:
-            return math.ceil(self.data_size/self.batch_size)
+            return math.ceil(self.data_size / self.batch_size)
+
