@@ -2,8 +2,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import numpy as np
-from utils import map_activation_str_to_layer
-from torch.nn import Dropout
+from torch.nn import Dropout, Embedding
+from util import map_activation_str_to_layer
 
 INF = 1e30
 _INF = -1e30
