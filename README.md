@@ -138,6 +138,8 @@ python train.py \
     --dropout 0.2
 ```
 
+To train a binary BMGF-RoBERTa, just unset *num_rels* and set the *relations* as *Comparison*/*Contingency*/*Expansion*/*Temporal*.
+
 ### Evaluation
 
 Macro-F1 and accuracy are used in discourse relation classification. Some instances were annotated as more than one label. Following previous work and the scorer at [conll16st](https://github.com/attapol/conll16st), a prediction is regarded as correct once it matches one of the ground-truth labels.

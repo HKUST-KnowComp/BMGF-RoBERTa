@@ -303,6 +303,11 @@ def train(args, logger, writer):
         explicit_dataset = Dataset().load_pt(args.explicit_dataset_path)
         datasets["train"].data.extend(explicit_dataset.data)
         del explicit_dataset
+    for data_type, dataset in datasets.items():
+        for x in dataset:
+            x["arg1_len"] = len(x["arg1"])
+            x["arg2_len"] = len(x["arg2"])
+
     logger.info("train:valid:test = %d:%d:%d" % (len(datasets["train"]), len(datasets["valid"]), len(datasets["test"])))
 
     rel_map = defaultdict(int)
@@ -320,7 +325,7 @@ def train(args, logger, writer):
         rel_map=rel_map, min_arg=args.min_arg, max_arg=args.max_arg, pad_id=pad_id)
     for data_type in datasets:
         sampler = Sampler(datasets[data_type], 
-            group_by=["arg1", "arg2"], batch_size=args.batch_size, 
+            group_by=["arg1_len", "arg2_len"], batch_size=args.batch_size, 
             shuffle=data_type=="train", drop_last=False)
         data_loaders[data_type] = data.DataLoader(datasets[data_type], 
             batch_sampler=sampler, 
